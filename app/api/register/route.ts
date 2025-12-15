@@ -93,6 +93,7 @@ export async function POST(request: Request) {
       plan_end_date: body.plan_end_date,
       status: 'active',
       photo_url: photoUrl,
+      face_descriptor: body.face_descriptor || null,
       join_date: new Date().toISOString(),
       last_visit_date: null
     }

@@ -38,13 +38,15 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
 
       if (error) throw error;
       
-      // Convert date strings back to Date objects
+      // Convert date strings back to Date objects and handle face_descriptor
       const formattedData = data.map(member => ({
         ...member,
-        planStartDate: new Date(member.planStartDate),
-        planEndDate: new Date(member.planEndDate),
-        joinDate: new Date(member.joinDate),
-        lastVisitDate: member.lastVisitDate ? new Date(member.lastVisitDate) : undefined,
+        planStartDate: new Date(member.plan_start_date),
+        planEndDate: new Date(member.plan_end_date),
+        joinDate: new Date(member.join_date),
+        lastVisitDate: member.last_visit_date ? new Date(member.last_visit_date) : undefined,
+        photoUrl: member.photo_url,
+        faceDescriptor: member.face_descriptor ? (Array.isArray(member.face_descriptor) ? member.face_descriptor : []) : undefined,
       }));
       
       setMembers(formattedData);

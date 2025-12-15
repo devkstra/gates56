@@ -4,7 +4,7 @@ import { Lock, Unlock } from "lucide-react"
 
 interface GateControlProps {
   gateStatus: "open" | "closed"
-  onGateControl: (action: "open" | "close") => void
+  onGateControl: (action: "open" | "closed") => void
 }
 
 export default function GateControl({ gateStatus, onGateControl }: GateControlProps) {
@@ -31,9 +31,9 @@ export default function GateControl({ gateStatus, onGateControl }: GateControlPr
             className={`p-4 rounded-xl ${gateStatus === "open" ? "bg-emerald-500/20 border border-emerald-500/40" : "bg-red-500/20 border border-red-500/40"}`}
           >
             {gateStatus === "open" ? (
-              <Unlock className={`w-8 h-8 ${gateStatus === "open" ? "text-emerald-500" : "text-red-500"}`} />
+              <Unlock className="w-8 h-8 text-emerald-500" />
             ) : (
-              <Lock className={`w-8 h-8 ${gateStatus === "open" ? "text-emerald-500" : "text-red-500"}`} />
+              <Lock className="w-8 h-8 text-red-500" />
             )}
           </div>
         </div>
@@ -48,7 +48,7 @@ export default function GateControl({ gateStatus, onGateControl }: GateControlPr
           Force Open
         </button>
         <button
-          onClick={() => onGateControl("close")}
+          onClick={() => onGateControl("closed")}
           className="flex-1 bg-gradient-to-r from-red-600 to-red-500 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:shadow-lg hover:shadow-red-500/30 active:scale-95"
         >
           <Lock className="w-5 h-5 inline mr-2" />

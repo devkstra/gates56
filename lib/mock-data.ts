@@ -10,6 +10,7 @@ export interface Member {
   planEndDate: Date
   status: "active" | "inactive" | "expired"
   photoUrl?: string
+  faceDescriptor?: number[] | Float32Array
   lastVisitDate?: Date
   joinDate: Date
 }

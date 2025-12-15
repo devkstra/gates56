@@ -42,8 +42,8 @@ export async function POST(request: Request) {
     console.log('Inserting attendance record:', JSON.stringify(attendanceRecord, null, 2));
     
     // Insert attendance record
-    const { data, error } = await supabase
-      .from('attendance')
+    const { data, error } = await (supabase
+      .from('attendance') as any)
       .insert([attendanceRecord])
       .select('*')
       .single();
@@ -71,9 +71,9 @@ export async function POST(request: Request) {
     console.log('Attendance recorded successfully:', data);
 
     // Update member's last visit date
-    const { error: updateError } = await supabase
-      .from('members')
-      .update({ 
+    const { error: updateError } = await (supabase
+      .from('members') as any)
+      .update({
         last_visit_date: now,
         updated_at: now,
       })

@@ -47,10 +47,16 @@ export interface Database {
           name: string
           email: string
           phone: string
+          age: number
+          gender: string
           plan: string
+          plan_start_date: string
+          plan_end_date: string
+          status: string
           join_date: string
           last_visit_date: string | null
           photo_url: string | null
+          face_descriptor: Json | null
           created_at: string
           updated_at: string
         }
@@ -59,10 +65,16 @@ export interface Database {
           name: string
           email: string
           phone: string
+          age?: number
+          gender: string
           plan: string
+          plan_start_date: string
+          plan_end_date: string
+          status?: string
           join_date?: string
           last_visit_date?: string | null
           photo_url?: string | null
+          face_descriptor?: Json | null
           created_at?: string
           updated_at?: string
         }
@@ -71,10 +83,16 @@ export interface Database {
           name?: string
           email?: string
           phone?: string
+          age?: number
+          gender?: string
           plan?: string
+          plan_start_date?: string
+          plan_end_date?: string
+          status?: string
           join_date?: string
           last_visit_date?: string | null
           photo_url?: string | null
+          face_descriptor?: Json | null
           created_at?: string
           updated_at?: string
         }

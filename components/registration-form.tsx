@@ -1,24 +1,11 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useSupabase } from "@/lib/supabase/provider"
 import { toast } from "sonner"
-
-export interface NewMemberData {
-  name: string
-  phone: string
-  email: string
-  age: number
-  gender: "M" | "F" | "Other"
-  plan: "1-month" | "3-months" | "1-year"
-  planStartDate: Date
-  planEndDate: Date
-  status: "active" | "inactive" | "expired"
-  photoUrl?: string
-  lastVisitDate?: Date
-  joinDate: Date
-}
+import { useFaceApi, detectFaceDescriptor } from "@/lib/hooks/useFaceApi"
+import * as faceapi from "face-api.js"
 
 interface RegistrationFormProps {
   capturedPhoto: string | null
@@ -26,8 +13,13 @@ interface RegistrationFormProps {
 }
 
 export default function RegistrationForm({ capturedPhoto, onPhotoClear }: RegistrationFormProps) {
-  const { addMember, loading } = useSupabase()
+  const { loading } = useSupabase()
+  const { modelsLoaded, isLoading: modelsLoading } = useFaceApi()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isProcessingFace, setIsProcessingFace] = useState(false)
+  const [faceDescriptor, setFaceDescriptor] = useState<Float32Array | null>(null)
+  const imgRef = useRef<HTMLImageElement | null>(null)
+
   const [formData, setFormData] = useState({
     fullName: "",
     phone: "",
@@ -36,6 +28,50 @@ export default function RegistrationForm({ capturedPhoto, onPhotoClear }: Regist
     gender: "M" as const,
     plan: "1-month" as const,
   })
+
+  useEffect(() => {
+    if (capturedPhoto && modelsLoaded && !faceDescriptor) {
+      processCapturedPhoto()
+    }
+  }, [capturedPhoto, modelsLoaded])
+
+  const processCapturedPhoto = async () => {
+    if (!capturedPhoto || !modelsLoaded) return
+
+    setIsProcessingFace(true)
+    setFaceDescriptor(null)
+
+    try {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve()
+        img.onerror = () => reject(new Error('Failed to load image'))
+        img.src = capturedPhoto
+      })
+
+      imgRef.current = img
+
+      const descriptor = await detectFaceDescriptor(img)
+
+      if (!descriptor) {
+        toast.error('No face detected in photo. Please capture a clear photo with your face visible.')
+        if (onPhotoClear) onPhotoClear()
+        return
+      }
+
+      setFaceDescriptor(descriptor)
+      toast.success('Face detected successfully!')
+
+    } catch (error) {
+      console.error('Error processing face:', error)
+      toast.error('Failed to process face. Please try again.')
+      if (onPhotoClear) onPhotoClear()
+    } finally {
+      setIsProcessingFace(false)
+    }
+  }
 
   const calculatePlanEndDate = (plan: string) => {
     const today = new Date()
@@ -62,10 +98,14 @@ export default function RegistrationForm({ capturedPhoto, onPhotoClear }: Regist
       return
     }
 
+    if (!faceDescriptor) {
+      toast.error("Face not detected. Please capture a clear photo.")
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
-      // Initialize member data with required fields
       const memberData: Record<string, any> = {
         name: formData.fullName,
         phone: formData.phone,
@@ -77,49 +117,40 @@ export default function RegistrationForm({ capturedPhoto, onPhotoClear }: Regist
         plan_end_date: calculatePlanEndDate(formData.plan).toISOString(),
         status: "active",
         join_date: new Date().toISOString(),
-        last_visit_date: null
+        last_visit_date: null,
+        face_descriptor: Array.from(faceDescriptor)
       }
 
-      console.log('Preparing to process photo...')
-      
-      // Process the photo if available
       if (capturedPhoto) {
         try {
           const response = await fetch(capturedPhoto)
           if (!response.ok) throw new Error('Failed to fetch captured photo')
-          
+
           const blob = await response.blob()
-          const file = new File([blob], `member-${Date.now()}.jpg`, { 
-            type: 'image/jpeg' 
+          const file = new File([blob], `member-${Date.now()}.jpg`, {
+            type: 'image/jpeg'
           })
-          
-          // Convert file to base64 for the API
+
           const reader = new FileReader()
           const photoBase64 = await new Promise<string>((resolve, reject) => {
             reader.onload = () => {
               if (typeof reader.result === 'string') {
-                console.log('Successfully converted photo to base64')
                 resolve(reader.result)
               } else {
                 reject(new Error('Failed to read file as base64'))
               }
             }
-            reader.onerror = (error) => {
-              console.error('Error reading file:', error)
-              reject(new Error('Failed to read file'))
-            }
+            reader.onerror = () => reject(new Error('Failed to read file'))
             reader.readAsDataURL(file)
           })
-          
-          // Add photo to member data
+
           memberData.photo_file = photoBase64
         } catch (photoError) {
           console.error('Error processing photo:', photoError)
-          toast.error('Error processing photo. Member will be created without a photo.')
+          toast.error('Error processing photo. Registration will continue without photo.')
         }
       }
 
-      // Send to our API route
       const apiResponse = await fetch('/api/register', {
         method: 'POST',
         headers: {
@@ -133,11 +164,9 @@ export default function RegistrationForm({ capturedPhoto, onPhotoClear }: Regist
       if (!apiResponse.ok) {
         throw new Error(result.error || 'Failed to register member')
       }
-      
-      // Show success message
+
       toast.success(`Member ${formData.fullName} registered successfully!`)
-      
-      // Reset form
+
       setFormData({
         fullName: "",
         phone: "",
@@ -146,31 +175,19 @@ export default function RegistrationForm({ capturedPhoto, onPhotoClear }: Regist
         gender: "M",
         plan: "1-month",
       })
-      
-      // Clear captured photo
+
+      setFaceDescriptor(null)
+
       if (typeof onPhotoClear === 'function') {
         onPhotoClear()
       }
-      
-      // Redirect to dashboard if not already there
+
       if (window.location.pathname !== '/dashboard') {
         window.location.href = '/dashboard'
       } else {
-        // If already on dashboard, trigger a refresh
         window.location.reload()
       }
-      
-      toast.success(`Member ${formData.fullName} registered successfully!`)
 
-      // Reset form
-      setFormData({
-        fullName: "",
-        phone: "",
-        email: "",
-        age: "",
-        gender: "M",
-        plan: "1-month",
-      })
     } catch (error) {
       console.error('Error registering member:', error)
       toast.error("Failed to register member. Please try again.")
@@ -182,6 +199,24 @@ export default function RegistrationForm({ capturedPhoto, onPhotoClear }: Regist
   return (
     <form onSubmit={handleSubmit} className="bg-card p-6 rounded-lg border border-border space-y-4">
       <h2 className="text-xl font-bold">Registration Details</h2>
+
+      {modelsLoading && (
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm text-blue-400">
+          Loading AI models...
+        </div>
+      )}
+
+      {isProcessingFace && (
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 text-sm text-yellow-400">
+          Processing face detection...
+        </div>
+      )}
+
+      {faceDescriptor && (
+        <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 text-sm text-green-400">
+          Face detected and ready for registration
+        </div>
+      )}
 
       <div className="space-y-4">
         <div>
@@ -269,12 +304,15 @@ export default function RegistrationForm({ capturedPhoto, onPhotoClear }: Regist
 
       <button
         type="submit"
-        disabled={isSubmitting || loading}
+        disabled={isSubmitting || loading || !faceDescriptor || isProcessingFace}
         className={`w-full bg-success hover:bg-success-hover text-black font-semibold py-3 rounded-lg transition-colors mt-6 ${
-          (isSubmitting || loading) ? 'opacity-50 cursor-not-allowed' : ''
+          (isSubmitting || loading || !faceDescriptor || isProcessingFace) ? 'opacity-50 cursor-not-allowed' : ''
         }`}
       >
-        {isSubmitting || loading ? 'Registering...' : 'Register Member'}
+        {isSubmitting || loading ? 'Registering...' :
+         isProcessingFace ? 'Processing Face...' :
+         !faceDescriptor ? 'Waiting for Face Detection...' :
+         'Register Member'}
       </button>
     </form>
   )

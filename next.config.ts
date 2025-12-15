@@ -86,16 +86,9 @@ const nextConfig: NextConfig = {
     // !! WARN !!
     ignoreBuildErrors: false,
   },
-  
-  // Configure Turbopack
-  turbopack: {
-    // Enable WebAssembly support
-    wasm: true,
-    // Enable experimental features
-    experimental: {
-      // Add any Turbopack-specific experimental features here
-    }
-  },
+
+  // Empty turbopack config to silence webpack migration warning
+  turbopack: {},
 };
 
 export default nextConfig;
